@@ -193,6 +193,14 @@ kbd { font: 500 10.5px/1 var(--mono); padding: 4px 5px 3px; min-width: 12px; tex
 
   // ---------- environment checks
   const touchOnly = matchMedia('(hover: none) and (pointer: coarse)').matches;
+  // phones and tablets often lack fullscreen and pointer lock: keep the buttons in the page, just hidden
+  const canFullscreen = !!document.fullscreenEnabled;
+  const canLock = 'pointerLockElement' in document && !touchOnly;
+  function showChrome(on) {
+    const hint = $('hint'), fs = $('fs');
+    if (hint) hint.hidden = !on || !canLock;
+    if (fs) fs.hidden = !on || !canFullscreen;
+  }
   if (touchOnly) $('device-note').hidden = false;
   (function () {
     const c = document.createElement('canvas');
@@ -283,8 +291,8 @@ kbd { font: 500 10.5px/1 var(--mono); padding: 4px 5px 3px; min-width: 12px; tex
           window.addEventListener('pointerdown', once, true); window.addEventListener('keydown', once, true);
         });
       },
-      onGameReady: () => { running = true; if (document.pointerLockElement !== canvas) { $('hint').hidden = false; $('fs').hidden = false; } },
-      onQuit: () => { ended = true; running = false; persist(); $('hint').hidden = true; $('fs').hidden = true; $('ended').hidden = false; },
+      onGameReady: () => { running = true; try { if (document.pointerLockElement !== canvas) showChrome(true); } catch (e) {} },
+      onQuit: () => { ended = true; running = false; persist(); showChrome(false); $('ended').hidden = false; },
       onAbort: what => { if (!ended) fail('The engine stopped with an error.', String(what)); },
       onExit: code => { if (code && !ended) fail('The engine stopped (exit code ' + code + ').'); }
     };
@@ -337,7 +345,7 @@ kbd { font: 500 10.5px/1 var(--mono); padding: 4px 5px 3px; min-width: 12px; tex
       canvas.focus();
       const [w, h] = sizeNow();
       try { Module.callMain(['--home=profile', '--init', '-w' + w, '-h' + h]); }
-      catch (e) { if (e !== 'unwind' && !(e && e.name === 'ExitStatus')) fail('The engine stopped with an error.', String(e && e.stack || e)); }
+      catch (e) { if (e !== 'unwind' && !(e && e.name === 'ExitStatus')) fail('The engine stopped with an error.', e && e.message ? e.message + '\n' + (e.stack || '') : String(e)); }
       setInterval(persist, 300000);
     }, 40);
   };
@@ -358,8 +366,7 @@ kbd { font: 500 10.5px/1 var(--mono); padding: 4px 5px 3px; min-width: 12px; tex
   document.addEventListener('pointerlockchange', () => {
     const locked = document.pointerLockElement === canvas;
     if (!running) return;
-    $('hint').hidden = locked;
-    $('fs').hidden = locked;
+    showChrome(!locked);
     if (!locked) setTimeout(() => { if (running && document.pointerLockElement !== canvas && !menuOpen()) Module.ccall('ac_exec', null, ['string'], ['key_escape']); }, 120);
   });
 
@@ -380,7 +387,7 @@ kbd { font: 500 10.5px/1 var(--mono); padding: 4px 5px 3px; min-width: 12px; tex
   }
   $('fs').onclick = toggleFullscreen;
   $('fsboot').onclick = toggleFullscreen;
-  if (!document.fullscreenEnabled) { $('fs').remove(); $('fsboot').remove(); }
+  if (!canFullscreen) $('fsboot').hidden = true;
 
   // ---------- keep settings when the tab goes away
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') persist(); });
