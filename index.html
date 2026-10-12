@@ -42,7 +42,7 @@ body { margin: 0; background: var(--ground); color: var(--fg); font: 15px/1.5 va
 .brief { max-width: 34rem; display: grid; gap: 22px; min-width: 0; }
 .eyebrow { font: 500 11px/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 14px; }
 .eyebrow b { color: var(--signal); font-weight: 500; }
-h1 { margin: 0; font: 900 clamp(40px, 11vw, 112px)/.86 var(--display); overflow-wrap: anywhere; letter-spacing: .01em; text-transform: uppercase; text-wrap: balance; }
+h1 { margin: 0; font: 900 clamp(36px, 10vw, 112px)/.86 var(--display); white-space: nowrap; width: max-content; max-width: none; letter-spacing: .01em; text-transform: uppercase; } /* one word: never wraps, scales with the window instead */
 h1 span { color: var(--signal); }
 .lede { margin: 0; color: #cfcdbf; max-width: 60ch; }
 .teams { display: flex; gap: 10px; flex-wrap: wrap; font: 500 12px/1 var(--mono); letter-spacing: .06em; }
