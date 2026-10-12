@@ -322,6 +322,18 @@ extern "C" EMSCRIPTEN_KEEPALIVE void ac_exec(const char *cmd)
     if(inmainloop) execute(cmd);
 }
 
+extern "C" EMSCRIPTEN_KEEPALIVE void ac_key(int keycode, int down)
+{ // on-screen controls: press or release a key (mouse buttons are negative: -1 left, -3 right, -4 wheel up)
+    if(!inmainloop) return;
+    int scancode = keycode > 0 && !(keycode & SDLK_SCANCODE_MASK) ? (int)SDL_GetScancodeFromKey((SDL_Keycode)keycode) : 0;
+    keypress(keycode, scancode, down != 0);
+}
+
+extern "C" EMSCRIPTEN_KEEPALIVE void ac_look(int dx, int dy)
+{ // on-screen controls: turn the view like a mouse would
+    if(inmainloop && (dx || dy)) mousemove(dx, dy);
+}
+
 extern "C" EMSCRIPTEN_KEEPALIVE void ac_resize(int w, int h)
 {
     if(!screen || w < 1 || h < 1) return;
@@ -376,7 +388,8 @@ p = SRC / 'menus.cpp'
 t = p.read_text(encoding='latin-1')
 t += '''
 #ifdef __EMSCRIPTEN__
-extern "C" EMSCRIPTEN_KEEPALIVE int ac_menuopen() { return curmenu != NULL; }
+extern void *scoremenu;
+extern "C" EMSCRIPTEN_KEEPALIVE int ac_menuopen() { return curmenu != NULL && (void *)curmenu != scoremenu; } // the scoreboard is not a menu you navigate
 #endif
 '''
 p.write_text(t, encoding='latin-1')

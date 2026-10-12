@@ -96,6 +96,37 @@ kbd { font: 500 10.5px/1 var(--mono); padding: 4px 5px 3px; min-width: 12px; tex
 
 @media (max-width: 560px) { #boot { background: rgba(17,19,15,.96); } .keys { grid-template-columns: 1fr 1fr; } }
 @media (prefers-reduced-motion: reduce) { .bar i, #play { transition: none; } }
+
+/* touch controls (phones, tablets): left thumb moves, right thumb aims, buttons around the fire button */
+#touch { position: absolute; inset: 0; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+#touch .zone { position: absolute; top: 0; bottom: 0; }
+#touch .move { left: 0; width: 42%; }
+#touch .look { right: 0; width: 58%; }
+.stick { position: absolute; width: 116px; height: 116px; margin: -58px 0 0 -58px; border-radius: 50%; border: 2px solid rgba(230,228,215,.35); background: rgba(17,19,15,.28); pointer-events: none; }
+.stick i { position: absolute; left: 50%; top: 50%; width: 50px; height: 50px; margin: -25px 0 0 -25px; border-radius: 50%; background: rgba(230,228,215,.5); }
+.tbtn { position: absolute; width: var(--s, 54px); height: var(--s, 54px); padding: 0; border-radius: 50%;
+  border: 2px solid rgba(230,228,215,.38); background: rgba(17,19,15,.42); color: var(--fg);
+  font: 500 9.5px/1 var(--mono); letter-spacing: .05em; text-transform: uppercase; display: grid; place-items: center; touch-action: none; }
+.tbtn.on { background: rgba(240,161,46,.6); border-color: var(--signal); color: var(--signal-ink); }
+.tbtn.fire { --s: 86px; border-color: var(--signal); background: rgba(240,161,46,.28); font-size: 12px; font-weight: 500; }
+.tbtn.fire.on { background: rgba(240,161,46,.7); }
+.tbtn.small { --s: 44px; border-radius: 10px; }
+.tbtn.pad { --s: 50px; border-radius: 10px; font-size: 16px; }
+.tbtn.wide { width: 74px; border-radius: 10px; font-size: 11px; }
+#touch .play, #touch .menupad { position: absolute; inset: 0; pointer-events: none; }
+#touch .play > *, #touch .menupad > * { pointer-events: auto; }
+#touch .menupad, #touch.menu .play { display: none; }
+#touch.menu .menupad { display: block; }
+#touch.menu .zone { display: none; }
+#rotate { position: absolute; inset: 0; display: none; place-content: center; justify-items: center; gap: 14px; padding-inline: 24px; text-align: center; background: var(--ground); color: var(--fg); }
+#rotate .phone { width: 46px; height: 78px; border: 3px solid var(--signal); border-radius: 10px; animation: turn 2.4s ease-in-out infinite; }
+@keyframes turn { 0%, 30% { transform: rotate(0) } 60%, 100% { transform: rotate(-90deg) } }
+@media (orientation: portrait) { #stage.touchplay #rotate { display: grid; } }
+@media (prefers-reduced-motion: reduce) { #rotate .phone { animation: none; transform: rotate(-90deg); } }
+.nick { display: grid; gap: 6px; max-width: 18rem; }
+.nick label { font: 500 11px/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.nick input { font: 500 16px/1.2 var(--body); padding: 10px 12px; background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 2px; }
+.nick input:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 </style>
 
 <div id="stage" class="booting">
@@ -116,10 +147,25 @@ kbd { font: 500 10.5px/1 var(--mono); padding: 4px 5px 3px; min-width: 12px; tex
       <div class="actions">
         <button id="play" type="button" disabled>Loading</button>
         <button id="fsboot" class="ghost" type="button">Fullscreen</button>
-        <p class="note" id="device-note" hidden>Needs a keyboard and mouse.</p>
+        <p class="note" id="device-note" hidden>Turn your phone sideways to play.</p>
       </div>
 
-      <dl class="keys" aria-label="Controls">
+      <div class="nick" id="nickrow" hidden>
+        <label for="nickname">Nickname</label>
+        <input id="nickname" type="text" maxlength="15" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="unarmed">
+      </div>
+
+      <dl class="keys" id="keys-touch" aria-label="Touch controls" hidden>
+        <div><dt><kbd>Left thumb</kbd></dt><dd>Move</dd></div>
+        <div><dt><kbd>Right thumb</kbd></dt><dd>Aim</dd></div>
+        <div><dt><kbd>Fire</kbd></dt><dd>Hold to shoot, drag to aim</dd></div>
+        <div><dt><kbd>Jump</kbd><kbd>Duck</kbd></dt><dd>Jump · crouch on/off</dd></div>
+        <div><dt><kbd>Scope</kbd><kbd>Reload</kbd></dt><dd>Aim down sights · reload</dd></div>
+        <div><dt><kbd>Gun</kbd><kbd>Nade</kbd></dt><dd>Next weapon · grenade</dd></div>
+        <div><dt><kbd>Menu</kbd><kbd>Score</kbd></dt><dd>Game menu · scores</dd></div>
+      </dl>
+
+      <dl class="keys" id="keys-desktop" aria-label="Controls">
         <div><dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Move</dd></div>
         <div><dt><kbd>Mouse</kbd></dt><dd>Aim · click to fire</dd></div>
         <div><dt><kbd>Right</kbd></dt><dd>Scope / alt fire</dd></div>
@@ -135,6 +181,33 @@ kbd { font: 500 10.5px/1 var(--mono); padding: 4px 5px 3px; min-width: 12px; tex
       <p class="fine">Built from <a href="https://github.com/assaultcube/AC" target="_blank" rel="noopener">github.com/assaultcube/AC</a> with Emscripten; game data © the AssaultCube team and contributors under their own licenses. Settings and your nickname are kept in this browser. Online multiplayer needs the desktop game.</p>
     </div>
   </section>
+
+  <div id="touch" hidden>
+    <div class="zone move" data-zone="move"></div>
+    <div class="zone look" data-zone="look"></div>
+    <div class="stick" id="stick" hidden><i></i></div>
+    <div class="play">
+      <button class="tbtn small" data-key="ESC" data-mode="tap" style="left: max(12px, env(safe-area-inset-left, 0px)); top: 12px">Menu</button>
+      <button class="tbtn small" data-key="TAB" data-mode="hold" style="left: calc(max(12px, env(safe-area-inset-left, 0px)) + 52px); top: 12px">Score</button>
+      <button class="tbtn small" id="tfs" data-action="fullscreen" style="left: calc(max(12px, env(safe-area-inset-left, 0px)) + 104px); top: 12px">Full</button>
+      <button class="tbtn fire" data-key="FIRE" data-mode="hold" data-look="1" style="right: calc(max(20px, env(safe-area-inset-right, 0px)) + 8px); bottom: max(26px, env(safe-area-inset-bottom, 0px))">Fire</button>
+      <button class="tbtn" data-key="SPACE" data-mode="hold" style="--s: 60px; right: calc(max(20px, env(safe-area-inset-right, 0px)) + 112px); bottom: max(18px, env(safe-area-inset-bottom, 0px))">Jump</button>
+      <button class="tbtn" data-key="SHIFT" data-mode="toggle" style="--s: 50px; right: calc(max(20px, env(safe-area-inset-right, 0px)) + 184px); bottom: max(14px, env(safe-area-inset-bottom, 0px))">Duck</button>
+      <button class="tbtn" data-key="R" data-mode="tap" style="right: calc(max(20px, env(safe-area-inset-right, 0px)) + 4px); bottom: calc(max(26px, env(safe-area-inset-bottom, 0px)) + 100px)">Reload</button>
+      <button class="tbtn" data-key="ALT" data-mode="hold" style="right: calc(max(20px, env(safe-area-inset-right, 0px)) + 80px); bottom: calc(max(26px, env(safe-area-inset-bottom, 0px)) + 76px)">Scope</button>
+      <button class="tbtn" data-key="NEXTWEAPON" data-mode="tap" style="--s: 48px; right: calc(max(20px, env(safe-area-inset-right, 0px)) + 10px); bottom: calc(max(26px, env(safe-area-inset-bottom, 0px)) + 166px)">Gun</button>
+      <button class="tbtn" data-key="G" data-mode="hold" style="--s: 48px; right: calc(max(20px, env(safe-area-inset-right, 0px)) + 150px); bottom: calc(max(26px, env(safe-area-inset-bottom, 0px)) + 88px)">Nade</button>
+    </div>
+    <div class="menupad">
+      <button class="tbtn pad" data-key="UP" data-mode="tap" style="right: calc(max(20px, env(safe-area-inset-right, 0px)) + 150px); bottom: calc(max(20px, env(safe-area-inset-bottom, 0px)) + 112px)" aria-label="Up">▲</button>
+      <button class="tbtn pad" data-key="LEFT" data-mode="tap" style="right: calc(max(20px, env(safe-area-inset-right, 0px)) + 206px); bottom: calc(max(20px, env(safe-area-inset-bottom, 0px)) + 56px)" aria-label="Left">◀</button>
+      <button class="tbtn pad" data-key="RIGHT" data-mode="tap" style="right: calc(max(20px, env(safe-area-inset-right, 0px)) + 94px); bottom: calc(max(20px, env(safe-area-inset-bottom, 0px)) + 56px)" aria-label="Right">▶</button>
+      <button class="tbtn pad" data-key="DOWN" data-mode="tap" style="right: calc(max(20px, env(safe-area-inset-right, 0px)) + 150px); bottom: max(20px, env(safe-area-inset-bottom, 0px))" aria-label="Down">▼</button>
+      <button class="tbtn pad wide" data-key="ENTER" data-mode="tap" style="right: max(20px, env(safe-area-inset-right, 0px)); bottom: calc(max(20px, env(safe-area-inset-bottom, 0px)) + 84px)">OK</button>
+      <button class="tbtn pad wide" data-key="ESC" data-mode="tap" style="right: max(20px, env(safe-area-inset-right, 0px)); bottom: calc(max(20px, env(safe-area-inset-bottom, 0px)) + 20px)">Back</button>
+    </div>
+  </div>
+  <div id="rotate"><div class="phone" aria-hidden="true"></div><p>Turn your phone sideways to play.</p></div>
 
   <div id="hint" hidden><span><b>Click the game</b> to capture the mouse</span><span>Esc frees it</span></div>
   <button id="fs" type="button" hidden>Fullscreen</button>
@@ -191,7 +264,21 @@ kbd { font: 500 10.5px/1 var(--mono); padding: 4px 5px 3px; min-width: 12px; tex
 
   // ---------- environment checks
   const touchOnly = matchMedia('(hover: none) and (pointer: coarse)').matches;
-  if (touchOnly) $('device-note').hidden = false;
+  // phones and tablets often lack fullscreen and pointer lock: keep the buttons in the page, just hidden
+  const canFullscreen = !!document.fullscreenEnabled;
+  const canLock = 'pointerLockElement' in document && !touchOnly;
+  function showChrome(on) {
+    const hint = $('hint'), fs = $('fs');
+    if (hint) hint.hidden = !on || !canLock;
+    if (fs) fs.hidden = !on || !canFullscreen;
+  }
+  const touchUI = touchOnly || (navigator.maxTouchPoints > 0 && matchMedia('(pointer: coarse)').matches);
+  if (touchUI) {
+    $('device-note').hidden = false;
+    $('keys-touch').hidden = false; $('keys-desktop').hidden = true;
+    $('nickrow').hidden = false;
+    try { $('nickname').value = localStorage.getItem('ac-nick') || ''; } catch (e) {}
+  }
   (function () {
     const c = document.createElement('canvas');
     if (!(c.getContext('webgl') || c.getContext('experimental-webgl'))) fail('This browser has WebGL turned off or unavailable, and the engine needs it to draw.');
@@ -281,8 +368,8 @@ kbd { font: 500 10.5px/1 var(--mono); padding: 4px 5px 3px; min-width: 12px; tex
           window.addEventListener('pointerdown', once, true); window.addEventListener('keydown', once, true);
         });
       },
-      onGameReady: () => { running = true; if (document.pointerLockElement !== canvas) { $('hint').hidden = false; $('fs').hidden = false; } },
-      onQuit: () => { ended = true; running = false; persist(); $('hint').hidden = true; $('fs').hidden = true; $('ended').hidden = false; },
+      onGameReady: () => { running = true; try { if (document.pointerLockElement !== canvas) showChrome(true); } catch (e) {} if (touchUI) startTouch(); },
+      onQuit: () => { ended = true; running = false; persist(); showChrome(false); $('touch').hidden = true; stage.classList.remove('touchplay'); $('ended').hidden = false; },
       onAbort: what => { if (!ended) fail('The engine stopped with an error.', String(what)); },
       onExit: code => { if (code && !ended) fail('The engine stopped (exit code ' + code + ').'); }
     };
@@ -335,7 +422,7 @@ kbd { font: 500 10.5px/1 var(--mono); padding: 4px 5px 3px; min-width: 12px; tex
       canvas.focus();
       const [w, h] = sizeNow();
       try { Module.callMain(['--home=profile', '--init', '-w' + w, '-h' + h]); }
-      catch (e) { if (e !== 'unwind' && !(e && e.name === 'ExitStatus')) fail('The engine stopped with an error.', String(e && e.stack || e)); }
+      catch (e) { if (e !== 'unwind' && !(e && e.name === 'ExitStatus')) fail('The engine stopped with an error.', e && e.message ? e.message + '\n' + (e.stack || '') : String(e)); }
       setInterval(persist, 300000);
     }, 40);
   };
@@ -356,8 +443,7 @@ kbd { font: 500 10.5px/1 var(--mono); padding: 4px 5px 3px; min-width: 12px; tex
   document.addEventListener('pointerlockchange', () => {
     const locked = document.pointerLockElement === canvas;
     if (!running) return;
-    $('hint').hidden = locked;
-    $('fs').hidden = locked;
+    showChrome(!locked);
     if (!locked) setTimeout(() => { if (running && document.pointerLockElement !== canvas && !menuOpen()) Module.ccall('ac_exec', null, ['string'], ['key_escape']); }, 120);
   });
 
@@ -378,12 +464,110 @@ kbd { font: 500 10.5px/1 var(--mono); padding: 4px 5px 3px; min-width: 12px; tex
   }
   $('fs').onclick = toggleFullscreen;
   $('fsboot').onclick = toggleFullscreen;
-  if (!document.fullscreenEnabled) { $('fs').remove(); $('fsboot').remove(); }
+  if (!canFullscreen) $('fsboot').hidden = true;
 
   // ---------- keep settings when the tab goes away
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') persist(); });
   window.addEventListener('pagehide', persist);
   window.addEventListener('error', e => { if (!running && !ended && e.message) remember(e.message); });
+
+  // ---------- touch controls
+  // keycodes are SDL2's; mouse buttons are negative (-1 fire, -3 alt fire, -4 next weapon, as the wheel does)
+  const KEYS = { W: 119, A: 97, S: 115, D: 100, SPACE: 32, R: 114, G: 103, TAB: 9, ESC: 27, ENTER: 13,
+    SHIFT: 0x400000E1, UP: 0x40000052, DOWN: 0x40000051, LEFT: 0x40000050, RIGHT: 0x4000004F, FIRE: -1, ALT: -3, NEXTWEAPON: -4 };
+  const sendKey = (name, down) => { try { Module.ccall('ac_key', null, ['number', 'number'], [KEYS[name], down ? 1 : 0]); } catch (e) {} };
+  const LOOK_GAIN = 2.6;
+  let lookRestX = 0, lookRestY = 0;
+  function sendLook(dx, dy) {
+    lookRestX += dx * LOOK_GAIN; lookRestY += dy * LOOK_GAIN;
+    const ix = Math.trunc(lookRestX), iy = Math.trunc(lookRestY);
+    lookRestX -= ix; lookRestY -= iy;
+    if (ix || iy) { try { Module.ccall('ac_look', null, ['number', 'number'], [ix, iy]); } catch (e) {} }
+  }
+
+  function startTouch() {
+    const touch = $('touch'), stick = $('stick'), knob = stick.firstElementChild;
+    touch.hidden = false;
+    stage.classList.add('touchplay');
+    if (!canFullscreen) $('tfs').remove();
+    try { const n = $('nickname').value.replace(/[^A-Za-z0-9_\-.|\[\]]/g, '').slice(0, 15); if (n) { localStorage.setItem('ac-nick', n); Module.ccall('ac_exec', null, ['string'], ['name ' + n]); } } catch (e) {}
+    ['touchstart', 'touchmove', 'touchend'].forEach(t => touch.addEventListener(t, e => e.preventDefault(), { passive: false }));
+    touch.addEventListener('contextmenu', e => e.preventDefault());
+
+    const capture = (el, id) => { try { el.setPointerCapture(id); } catch (err) {} };
+    const held = new Set();
+    const press = (name, down) => { if (down === held.has(name)) return; down ? held.add(name) : held.delete(name); sendKey(name, down); };
+    const releaseAll = () => { for (const k of [...held]) press(k, false); touch.querySelectorAll('.tbtn.on').forEach(b => b.classList.remove('on')); stick.hidden = true; moveId = lookId = null; };
+
+    // left thumb: a stick that appears where the thumb lands
+    let moveId = null, ox = 0, oy = 0;
+    const R = 50, DEAD = 16;
+    function setMove(dx, dy) {
+      press('W', dy < -DEAD); press('S', dy > DEAD); press('A', dx < -DEAD); press('D', dx > DEAD);
+    }
+    // right thumb (and a finger held on Fire): drag to aim
+    let lookId = null, lx = 0, ly = 0;
+
+    touch.addEventListener('pointerdown', e => {
+      const zone = e.target.dataset && e.target.dataset.zone;
+      if (zone === 'move' && moveId === null) {
+        moveId = e.pointerId; ox = e.clientX; oy = e.clientY;
+        stick.style.left = ox + 'px'; stick.style.top = oy + 'px'; knob.style.transform = ''; stick.hidden = false;
+        capture(e.target, e.pointerId);
+      } else if (zone === 'look' && lookId === null) {
+        lookId = e.pointerId; lx = e.clientX; ly = e.clientY;
+        capture(e.target, e.pointerId);
+      }
+    });
+    touch.addEventListener('pointermove', e => {
+      if (e.pointerId === moveId) {
+        let dx = e.clientX - ox, dy = e.clientY - oy;
+        const len = Math.hypot(dx, dy);
+        if (len > R) { dx *= R / len; dy *= R / len; }
+        knob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+        setMove(dx, dy);
+      } else if (e.pointerId === lookId) {
+        sendLook(e.clientX - lx, e.clientY - ly); lx = e.clientX; ly = e.clientY;
+      }
+    });
+    const endPointer = e => {
+      if (e.pointerId === moveId) { moveId = null; stick.hidden = true; setMove(0, 0); }
+      if (e.pointerId === lookId) lookId = null;
+    };
+    touch.addEventListener('pointerup', endPointer);
+    touch.addEventListener('pointercancel', endPointer);
+
+    // buttons: hold (down while touched), toggle (on/off per tap) or tap (a short press)
+    touch.querySelectorAll('.tbtn[data-key]').forEach(btn => {
+      const name = btn.dataset.key, mode = btn.dataset.mode;
+      let bx = 0, by = 0, bid = null;
+      btn.addEventListener('pointerdown', e => {
+        e.stopPropagation(); capture(btn, e.pointerId);
+        if (mode === 'toggle') { const on = !held.has(name); press(name, on); btn.classList.toggle('on', on); return; }
+        bid = e.pointerId; bx = e.clientX; by = e.clientY;
+        btn.classList.add('on');
+        if (mode === 'hold') press(name, true);
+        else { sendKey(name, true); setTimeout(() => sendKey(name, false), 90); }
+      });
+      btn.addEventListener('pointermove', e => {
+        if (e.pointerId !== bid || !btn.dataset.look) return;
+        sendLook(e.clientX - bx, e.clientY - by); bx = e.clientX; by = e.clientY;
+      });
+      const up = e => { if (e.pointerId !== bid) return; bid = null; btn.classList.remove('on'); if (mode === 'hold') press(name, false); };
+      btn.addEventListener('pointerup', up);
+      btn.addEventListener('pointercancel', up);
+    });
+    const tfs = $('tfs');
+    if (tfs) tfs.addEventListener('pointerdown', e => { e.stopPropagation(); toggleFullscreen(); });
+
+    // game menus open: swap the play controls for arrow, OK and Back buttons
+    let inMenu = null;
+    setInterval(() => {
+      if (!running) return;
+      const m = menuOpen();
+      if (m !== inMenu) { inMenu = m; releaseAll(); touch.classList.toggle('menu', m); }
+    }, 200);
+  }
 })();
 </script>
 <script>
