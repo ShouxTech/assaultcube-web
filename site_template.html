@@ -1,0 +1,391 @@
+<title>AssaultCube Web</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@700;900&family=Barlow:wght@400;500;600&family=Martian+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed game canvas; a left-anchored briefing panel sits over it until deploy, then gets out of the way. */
+:root {
+  --ground: #11130f;        /* olive-black, the depot at night */
+  --panel: #191c16;
+  --line: #2f3428;
+  --fg: #e6e4d7;
+  --muted: #949786;
+  --signal: #f0a12e;        /* HUD amber */
+  --signal-ink: #1b1406;
+  --rvsf: #5d86ff;
+  --cla: #e0503f;
+  --danger: #ff6a55;
+  --display: "Big Shoulders Stencil Display", "Arial Narrow", Impact, sans-serif;
+  --body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --mono: "Martian Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { margin: 0; background: var(--ground); color: var(--fg); font: 15px/1.5 var(--body); overflow: hidden; }
+#stage { position: fixed; inset: 0; background: var(--ground); }
+#canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; background: #000; }
+#stage.booting #canvas { visibility: hidden; }
+
+/* briefing panel */
+#boot {
+  position: absolute; inset: 0; overflow-y: auto;
+  display: grid; align-content: center; grid-template-columns: minmax(0, 1fr);
+  padding-block: max(24px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-bottom, 0px));
+  padding-inline: clamp(16px, 6vw, 88px);
+  background:
+    linear-gradient(90deg, rgba(17,19,15,.97) 0%, rgba(17,19,15,.92) 46%, rgba(17,19,15,.55) 100%),
+    repeating-linear-gradient(135deg, transparent 0 22px, rgba(240,161,46,.035) 22px 44px),
+    var(--ground);
+}
+.brief { max-width: 34rem; display: grid; gap: 22px; min-width: 0; }
+.eyebrow { font: 500 11px/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.eyebrow b { color: var(--signal); font-weight: 500; }
+h1 { margin: 0; font: 900 clamp(40px, 11vw, 112px)/.86 var(--display); overflow-wrap: anywhere; letter-spacing: .01em; text-transform: uppercase; text-wrap: balance; }
+h1 span { color: var(--signal); }
+.lede { margin: 0; color: #cfcdbf; max-width: 60ch; }
+.teams { display: flex; gap: 10px; flex-wrap: wrap; font: 500 12px/1 var(--mono); letter-spacing: .06em; }
+.team { padding: 6px 8px 5px; border: 1px solid var(--line); }
+.team.rvsf { color: var(--rvsf); border-color: color-mix(in srgb, var(--rvsf) 45%, transparent); }
+.team.cla { color: var(--cla); border-color: color-mix(in srgb, var(--cla) 45%, transparent); }
+
+/* load readout, styled after the in-game ammo counter */
+.readout { display: grid; gap: 8px; }
+.readout-top { display: flex; justify-content: space-between; gap: 12px; font: 400 12px/1.4 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.readout-top #status { color: var(--fg); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar { height: 10px; background: var(--panel); border: 1px solid var(--line); position: relative; overflow: hidden; }
+.bar i { position: absolute; inset: 0 auto 0 0; width: 0%; background: repeating-linear-gradient(90deg, var(--signal) 0 7px, transparent 7px 9px); transition: width .25s linear; }
+
+.actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+button { font: 600 15px/1 var(--body); cursor: pointer; border-radius: 2px; }
+button:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+#play {
+  font: 900 26px/1 var(--display); letter-spacing: .06em; text-transform: uppercase;
+  padding: 14px 30px 12px; border: 0; background: var(--signal); color: var(--signal-ink);
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%);
+  transition: filter .15s;
+}
+#play:disabled { background: var(--panel); color: var(--muted); cursor: progress; outline: 1px solid var(--line); outline-offset: -1px; }
+#play:not(:disabled):hover { filter: brightness(1.08); }
+.ghost { padding: 10px 14px; background: transparent; color: var(--fg); border: 1px solid var(--line); }
+.ghost:hover { border-color: var(--muted); }
+.note { font-size: 13px; color: var(--muted); margin: 0; }
+
+/* controls card */
+.keys { margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 9px 18px; font-size: 13px; color: #cfcdbf; }
+.keys div { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.keys dt { display: flex; gap: 3px; flex-shrink: 0; }
+.keys dd { margin: 0; min-width: 0; }
+kbd { font: 500 10.5px/1 var(--mono); padding: 4px 5px 3px; min-width: 12px; text-align: center; border: 1px solid #45493c; border-bottom-width: 2px; background: var(--panel); color: var(--fg); border-radius: 2px; }
+.fine { font-size: 12px; color: var(--muted); margin: 0; max-width: 62ch; }
+.fine a { color: var(--fg); }
+
+/* in-game chrome */
+#hint {
+  position: absolute; left: 50%; top: max(14px, env(safe-area-inset-top, 0px)); transform: translateX(-50%);
+  display: flex; gap: 12px; align-items: center; padding: 9px 12px; max-width: calc(100% - 32px);
+  background: rgba(17,19,15,.88); border: 1px solid var(--line); font-size: 13px; pointer-events: none;
+}
+#hint b { color: var(--signal); font-weight: 600; }
+#fs { position: absolute; right: 16px; bottom: max(16px, env(safe-area-inset-bottom, 0px)); padding: 8px 12px; background: rgba(17,19,15,.85); color: var(--fg); border: 1px solid var(--line); font-size: 13px; }
+#fs:hover { border-color: var(--muted); }
+
+.sheet { position: absolute; inset: 0; display: grid; place-items: center; padding-inline: 16px; padding-block: 24px; background: rgba(17,19,15,.94); }
+.sheet .card { max-width: 32rem; display: grid; gap: 14px; min-width: 0; }
+.sheet h2 { margin: 0; font: 900 40px/1 var(--display); text-transform: uppercase; }
+.sheet pre { margin: 0; font: 12px/1.5 var(--mono); color: var(--danger); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 40vh; overflow: auto; background: var(--panel); padding: 10px; border: 1px solid var(--line); }
+
+@media (max-width: 560px) { #boot { background: rgba(17,19,15,.96); } .keys { grid-template-columns: 1fr 1fr; } }
+@media (prefers-reduced-motion: reduce) { .bar i, #play { transition: none; } }
+</style>
+
+<div id="stage" class="booting">
+  <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+
+  <section id="boot" aria-labelledby="title">
+    <div class="brief">
+      <div class="eyebrow"><span><b>v1.3</b> Cube engine</span><span>C++ → WebAssembly</span><span>WebGL</span></div>
+      <h1 id="title">Assault<span>Cube</span></h1>
+      <p class="lede">The open-source shooter, built from its own C++ source and running in this tab. All 44 official maps, the weapons, the sound and the bot AI are here. Pick a mode, set how many bots, and play offline.</p>
+      <div class="teams" aria-label="Teams"><span class="team rvsf">RVSF</span><span class="team cla">CLA</span><span class="team">Bot DM · TDM · OSOK · Pistol Frenzy · Survival</span></div>
+
+      <div class="readout" aria-live="polite">
+        <div class="readout-top"><span id="status">Preparing download…</span><span id="amount">0 / 43 MB</span></div>
+        <div class="bar" role="progressbar" aria-label="Download progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="barfill"></i></div>
+      </div>
+
+      <div class="actions">
+        <button id="play" type="button" disabled>Loading</button>
+        <button id="fsboot" class="ghost" type="button">Fullscreen</button>
+        <p class="note" id="device-note" hidden>Needs a keyboard and mouse.</p>
+      </div>
+
+      <dl class="keys" aria-label="Controls">
+        <div><dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Move</dd></div>
+        <div><dt><kbd>Mouse</kbd></dt><dd>Aim · click to fire</dd></div>
+        <div><dt><kbd>Right</kbd></dt><dd>Scope / alt fire</dd></div>
+        <div><dt><kbd>Space</kbd></dt><dd>Jump</dd></div>
+        <div><dt><kbd>Shift</kbd></dt><dd>Crouch</dd></div>
+        <div><dt><kbd>R</kbd></dt><dd>Reload</dd></div>
+        <div><dt><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd></dt><dd>Weapon slots</dd></div>
+        <div><dt><kbd>G</kbd></dt><dd>Quick grenade</dd></div>
+        <div><dt><kbd>Tab</kbd></dt><dd>Scores</dd></div>
+        <div><dt><kbd>Esc</kbd></dt><dd>Menu, frees mouse</dd></div>
+      </dl>
+
+      <p class="fine">Built from <a href="https://github.com/assaultcube/AC" target="_blank" rel="noopener">github.com/assaultcube/AC</a> with Emscripten; game data © the AssaultCube team and contributors under their own licenses. Settings and your nickname are kept in this browser. Online multiplayer needs the desktop game.</p>
+    </div>
+  </section>
+
+  <div id="hint" hidden><span><b>Click the game</b> to capture the mouse</span><span>Esc frees it</span></div>
+  <button id="fs" type="button" hidden>Fullscreen</button>
+
+  <section id="ended" class="sheet" hidden>
+    <div class="card">
+      <h2>Mission over</h2>
+      <p class="note">The game has quit. Your settings are saved in this browser.</p>
+      <div class="actions"><button id="again" class="ghost" type="button">Play again</button></div>
+    </div>
+  </section>
+
+  <section id="failed" class="sheet" hidden>
+    <div class="card">
+      <h2>Couldn't start</h2>
+      <p class="note" id="failmsg">The engine stopped with an error.</p>
+      <pre id="faillog"></pre>
+      <div class="actions"><button id="retry" class="ghost" type="button">Reload</button></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const stage = $('stage'), canvas = $('canvas'), playBtn = $('play');
+  const logTail = [];
+  const remember = t => { logTail.push(t); if (logTail.length > 60) logTail.shift(); };
+  const MB = n => (n / 1048576).toFixed(1);
+
+  let dataTotal = 0, dataDone = 0, wasmTotal = 0, wasmDone = 0;
+  function showProgress(label) {
+    const total = dataTotal + wasmTotal, done = dataDone + wasmDone;
+    if (label) $('status').textContent = label;
+    if (total) {
+      $('amount').textContent = MB(done) + ' / ' + MB(total) + ' MB';
+      const pct = Math.min(100, Math.round(100 * done / total));
+      $('barfill').style.width = pct + '%';
+      document.querySelector('.bar').setAttribute('aria-valuenow', pct);
+    }
+  }
+
+  function fail(message, detail) {
+    $('failmsg').textContent = message;
+    $('faillog').textContent = (detail ? detail + '\n\n' : '') + logTail.slice(-25).join('\n');
+    $('failed').hidden = false;
+    $('boot').hidden = true;
+    $('hint').hidden = true;
+    try { document.exitPointerLock && document.exitPointerLock(); } catch (e) {}
+  }
+  $('retry').onclick = () => location.reload();
+  $('again').onclick = () => location.reload();
+
+  // ---------- environment checks
+  const touchOnly = matchMedia('(hover: none) and (pointer: coarse)').matches;
+  if (touchOnly) $('device-note').hidden = false;
+  (function () {
+    const c = document.createElement('canvas');
+    if (!(c.getContext('webgl') || c.getContext('experimental-webgl'))) fail('This browser has WebGL turned off or unavailable, and the engine needs it to draw.');
+    if (typeof WebAssembly !== 'object') fail('This browser cannot run WebAssembly.');
+    if (typeof DecompressionStream !== 'function') fail('This browser is too old to unpack the game data (it needs DecompressionStream). Try a current Chrome, Edge, Firefox or Safari.');
+  })();
+
+  // ---------- downloads (cached in the browser after the first visit when the Cache API is available)
+  async function openCache(name) { try { return await caches.open(name); } catch (e) { return null; } }
+  async function fetchBytes(url, cache, onBytes) {
+    let res = null;
+    if (cache) { try { res = await cache.match(url); } catch (e) { res = null; } }
+    const fromCache = !!res;
+    if (!res) {
+      res = await fetch(url);
+      if (!res.ok) throw new Error(url + ': HTTP ' + res.status);
+      if (cache) { try { await cache.put(url, res.clone()); } catch (e) {} }
+    }
+    const len = +res.headers.get('content-length') || 0;
+    if (!res.body || !res.body.getReader) { const b = new Uint8Array(await res.arrayBuffer()); onBytes(b.length); return b; }
+    const reader = res.body.getReader(), parts = [];
+    let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      parts.push(value); got += value.length; onBytes(value.length, fromCache);
+    }
+    const out = new Uint8Array(got); let o = 0;
+    for (const p of parts) { out.set(p, o); o += p.length; }
+    return out;
+  }
+
+  const wasmPromise = (async () => {
+    const cache = await openCache('assaultcube-engine-__ENGINE_VERSION__');
+    wasmTotal = __WASM_SIZE__;
+    return fetchBytes('ac.wasm', cache, n => { wasmDone += n; showProgress(); });
+  })();
+
+  const dataPromise = (async () => {
+    const idx = await (await fetch('data/index.json')).json();
+    dataTotal = idx.packed;
+    showProgress('Downloading game data');
+    const cache = await openCache('assaultcube-data-' + idx.version);
+    if (cache && caches.keys) {
+      try { for (const k of await caches.keys()) if (k.startsWith('assaultcube-') && k !== 'assaultcube-data-' + idx.version && !k.endsWith('__ENGINE_VERSION__')) caches.delete(k); } catch (e) {}
+    }
+    const pieces = await Promise.all(idx.chunks.map(c => fetchBytes('data/' + c, cache, n => { dataDone += n; showProgress(); })));
+    showProgress('Unpacking ' + idx.files.length + ' files');
+    const out = new Uint8Array(idx.total);
+    const ds = new DecompressionStream('gzip');
+    const writer = ds.writable.getWriter();
+    const writing = (async () => { for (const p of pieces) await writer.write(p); await writer.close(); })();
+    const reader = ds.readable.getReader();
+    let off = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      out.set(value, off); off += value.length;
+    }
+    await writing;
+    if (off !== idx.total) throw new Error('game data unpacked to ' + off + ' bytes, expected ' + idx.total);
+    return { idx, blob: out };
+  })();
+
+  // ---------- engine module
+  let running = false, ended = false;
+  const runtimeReady = new Promise(resolve => {
+    window.Module = {
+      canvas,
+      noInitialRun: true,
+      print: t => { remember(t); console.log(t); },
+      printErr: t => { remember(t); console.warn(t); },
+      instantiateWasm(imports, success) {
+        wasmPromise
+          .then(bytes => WebAssembly.instantiate(bytes, imports))
+          .then(r => success(r.instance, r.module))
+          .catch(e => fail('The engine could not be loaded. This page needs WebAssembly to be allowed.', String(e && e.message || e)));
+        return {};
+      },
+      onRuntimeInitialized: resolve,
+      setFullscreen(on) {
+        if (!document.fullscreenEnabled) return;
+        if (!on) { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); return; }
+        if (document.fullscreenElement) return;
+        stage.requestFullscreen().catch(() => { // not inside a click or key press: wait for the next one
+          const once = () => { window.removeEventListener('pointerdown', once, true); window.removeEventListener('keydown', once, true); stage.requestFullscreen().catch(() => {}); };
+          window.addEventListener('pointerdown', once, true); window.addEventListener('keydown', once, true);
+        });
+      },
+      onGameReady: () => { running = true; if (document.pointerLockElement !== canvas) { $('hint').hidden = false; $('fs').hidden = false; } },
+      onQuit: () => { ended = true; running = false; persist(); $('hint').hidden = true; $('fs').hidden = true; $('ended').hidden = false; },
+      onAbort: what => { if (!ended) fail('The engine stopped with an error.', String(what)); },
+      onExit: code => { if (code && !ended) fail('The engine stopped (exit code ' + code + ').'); }
+    };
+  });
+
+  // ---------- filesystem: game data in memory, profile (settings, nickname) persisted in IndexedDB
+  let idbfsMounted = false;
+  function syncfs(populate) {
+    return new Promise(res => {
+      if (!idbfsMounted) return res();
+      const t = setTimeout(res, 4000);
+      try { Module.FS.syncfs(populate, () => { clearTimeout(t); res(); }); } catch (e) { clearTimeout(t); res(); }
+    });
+  }
+  function persist() {
+    if (running) { try { Module.ccall('ac_savestate', null, [], []); } catch (e) {} }
+    return syncfs(false);
+  }
+
+  Promise.all([runtimeReady, dataPromise]).then(async ([, data]) => {
+    showProgress('Installing maps, textures and sounds');
+    const FS = Module.FS, made = new Set();
+    FS.mkdir('/ac');
+    for (const f of data.idx.files) {
+      const dir = '/ac/' + f.p.substring(0, f.p.lastIndexOf('/'));
+      if (!made.has(dir)) { FS.mkdirTree(dir); made.add(dir); }
+      FS.writeFile('/ac/' + f.p, data.blob.subarray(f.o, f.o + f.s));
+    }
+    FS.mkdir('/ac/profile');
+    try { FS.mount(FS.filesystems.IDBFS, {}, '/ac/profile'); idbfsMounted = true; await syncfs(true); } catch (e) { idbfsMounted = false; }
+    FS.chdir('/ac');
+    dataDone = dataTotal; wasmDone = wasmTotal;
+    showProgress('Ready');
+    playBtn.disabled = false;
+    playBtn.textContent = 'Deploy';
+    playBtn.focus();
+  }).catch(e => fail('The game data could not be downloaded.', String(e && e.message || e)));
+
+  // ---------- start
+  function sizeNow() { return [Math.max(320, stage.clientWidth), Math.max(200, stage.clientHeight)]; }
+  playBtn.onclick = () => {
+    if (playBtn.disabled) return;
+    playBtn.disabled = true;
+    playBtn.textContent = 'Starting';
+    $('status').textContent = 'Starting the engine';
+    try { canvas.requestPointerLock && canvas.requestPointerLock(); } catch (e) {}
+    setTimeout(() => {
+      stage.classList.remove('booting');
+      $('boot').hidden = true;
+      canvas.focus();
+      const [w, h] = sizeNow();
+      try { Module.callMain(['--home=profile', '--init', '-w' + w, '-h' + h]); }
+      catch (e) { if (e !== 'unwind' && !(e && e.name === 'ExitStatus')) fail('The engine stopped with an error.', String(e && e.stack || e)); }
+      setInterval(persist, 300000);
+    }, 40);
+  };
+
+  // ---------- audio contexts may start suspended; wake them on any input
+  const audioContexts = [];
+  ['AudioContext', 'webkitAudioContext'].forEach(name => {
+    const Orig = window[name];
+    if (!Orig) return;
+    window[name] = function (...a) { const c = new Orig(...a); audioContexts.push(c); return c; };
+    window[name].prototype = Orig.prototype;
+  });
+  const wake = () => audioContexts.forEach(c => { if (c.state === 'suspended') c.resume().catch(() => {}); });
+  ['pointerdown', 'keydown'].forEach(t => window.addEventListener(t, wake, true));
+
+  // ---------- mouse capture: Esc releases the pointer in browsers, so open the game menu when that happens
+  const menuOpen = () => { try { return !!Module.ccall('ac_menuopen', 'number', [], []); } catch (e) { return true; } };
+  document.addEventListener('pointerlockchange', () => {
+    const locked = document.pointerLockElement === canvas;
+    if (!running) return;
+    $('hint').hidden = locked;
+    $('fs').hidden = locked;
+    if (!locked) setTimeout(() => { if (running && document.pointerLockElement !== canvas && !menuOpen()) Module.ccall('ac_exec', null, ['string'], ['key_escape']); }, 120);
+  });
+
+  // ---------- size follows the window
+  let resizeTimer = 0;
+  function resize() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { if (running) { const [w, h] = sizeNow(); Module.ccall('ac_resize', null, ['number', 'number'], [w, h]); } }, 120);
+  }
+  window.addEventListener('resize', resize);
+  document.addEventListener('fullscreenchange', resize);
+
+  function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else stage.requestFullscreen().then(() => { if (running) canvas.requestPointerLock && canvas.requestPointerLock(); }).catch(() => {});
+    } catch (e) {}
+  }
+  $('fs').onclick = toggleFullscreen;
+  $('fsboot').onclick = toggleFullscreen;
+  if (!document.fullscreenEnabled) { $('fs').remove(); $('fsboot').remove(); }
+
+  // ---------- keep settings when the tab goes away
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') persist(); });
+  window.addEventListener('pagehide', persist);
+  window.addEventListener('error', e => { if (!running && !ended && e.message) remember(e.message); });
+})();
+</script>
+<script>
+/*__AC_JS__*/
+</script>

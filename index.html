@@ -227,8 +227,8 @@ kbd { font: 500 10.5px/1 var(--mono); padding: 4px 5px 3px; min-width: 12px; tex
   }
 
   const wasmPromise = (async () => {
-    const cache = await openCache('assaultcube-engine-5b4ae1aa227a');
-    wasmTotal = 2049050;
+    const cache = await openCache('assaultcube-engine-d57914dac05e');
+    wasmTotal = 2049077;
     return fetchBytes('ac.wasm', cache, n => { wasmDone += n; showProgress(); });
   })();
 
@@ -238,7 +238,7 @@ kbd { font: 500 10.5px/1 var(--mono); padding: 4px 5px 3px; min-width: 12px; tex
     showProgress('Downloading game data');
     const cache = await openCache('assaultcube-data-' + idx.version);
     if (cache && caches.keys) {
-      try { for (const k of await caches.keys()) if (k.startsWith('assaultcube-') && k !== 'assaultcube-data-' + idx.version && !k.endsWith('5b4ae1aa227a')) caches.delete(k); } catch (e) {}
+      try { for (const k of await caches.keys()) if (k.startsWith('assaultcube-') && k !== 'assaultcube-data-' + idx.version && !k.endsWith('d57914dac05e')) caches.delete(k); } catch (e) {}
     }
     const pieces = await Promise.all(idx.chunks.map(c => fetchBytes('data/' + c, cache, n => { dataDone += n; showProgress(); })));
     showProgress('Unpacking ' + idx.files.length + ' files');
@@ -338,7 +338,7 @@ kbd { font: 500 10.5px/1 var(--mono); padding: 4px 5px 3px; min-width: 12px; tex
       const [w, h] = sizeNow();
       try { Module.callMain(['--home=profile', '--init', '-w' + w, '-h' + h]); }
       catch (e) { if (e !== 'unwind' && !(e && e.name === 'ExitStatus')) fail('The engine stopped with an error.', String(e && e.stack || e)); }
-      setInterval(persist, 60000);
+      setInterval(persist, 300000);
     }, 40);
   };
 
